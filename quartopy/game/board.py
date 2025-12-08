@@ -357,6 +357,31 @@ class Board:
                     matrix[0, :, r, c] = piece.vectorize_onehot()
         return matrix
 
+    # ####################################################################
+    @staticmethod
+    def serialized_2_board(
+        serialized: str, name: str = "Deserialized", rows: int = 4, cols: int = 4
+    ) -> "Board":
+        """Convierte una cadena de texto serializada de cadena de bits en un tablero.
+        ## Parameters
+        ``serialized``: str representación booleana del tablero.
+        ``name``: str nombre del tablero.
+        ``rows``: int número de filas del tablero.
+        ``cols``: int número de columnas del tablero.
+        ## Return
+        ``board``: Board con las piezas del tablero.
+        """
+        matrix = Board.deserialize(serialized, rows, cols)
+        board = Board(name, storage=False, rows=rows, cols=cols)
+
+        for r in range(rows):
+            for c in range(cols):
+                piece_vector = matrix[:, r, c]
+                if np.any(piece_vector):
+                    piece = Piece.from_onehot(piece_vector)
+                    board.put_piece(piece, r, c)
+        return board
+
     @staticmethod
     # ####################################################################
     def pos_index2vector(index: int, rows: int = 4, cols: int = 4) -> np.ndarray:
@@ -416,3 +441,154 @@ class Board:
 
         index = row * self.cols + col
         return index
+
+    def plot(self, title: str = "Board", ax=None, show: bool = True):
+        """Método auxiliar para dibujar el tablero
+
+        Parameters
+        ----------
+        title : str
+            Título del tablero
+        ax : matplotlib.axes.Axes, optional
+            Eje donde dibujar. Si es None, crea una nueva figura.
+        show : bool
+            Si True, muestra la figura. Si False, solo retorna el eje.
+
+        Returns
+        -------
+        ax : matplotlib.axes.Axes
+            El eje con el tablero dibujado
+        """
+        import matplotlib.pyplot as plt
+        import matplotlib.patches as mpatches
+
+        # Create figure and axis if not provided
+        if ax is None:
+            fig, ax = plt.subplots(figsize=(6, 6))
+            created_fig = True
+        else:
+            created_fig = False
+
+        # Set title
+        ax.set_title(title, fontweight="bold")
+
+        # Set axis limits and labels
+        ax.set_xlim(-0.5, self.cols - 0.5)
+        ax.set_ylim(-0.5, self.rows - 0.5)
+        ax.set_xticks(range(self.cols))
+        ax.set_yticks(range(self.rows))
+        ax.set_xticklabels(range(self.cols))
+        ax.set_yticklabels(range(self.rows))
+        ax.invert_yaxis()  # Invert y-axis to match board orientation
+
+        # Add grid
+        ax.grid(True, linewidth=1.5, color="gray", alpha=0.3)
+
+        # Plot pieces
+        for r in range(self.rows):
+            for c in range(self.cols):
+                piece = self.board[r][c]
+                if isinstance(piece, Piece):
+                    # Determine color based on piece coloration
+                    color = (
+                        "black"
+                        if piece.coloration == Coloration.BLACK
+                        else "dodgerblue"
+                    )
+
+                    # Build text representation with proper case
+                    # T=TALL (all uppercase), L=LITTLE (all lowercase)
+                    # K=BLACK, W=WHITE
+                    # R=CIRCLE (circle), Q=SQUARE (square)
+                    # H=WITH_HOLE (underline), N=WITHOUT (no underline)
+
+                    if piece.size == Size.TALL:
+                        # TALL pieces: all uppercase
+                        size_char = "T"
+                        color_char = (
+                            "K" if piece.coloration == Coloration.BLACK else "W"
+                        )
+                        shape_char = "R" if piece.shape == Shape.CIRCLE else "Q"
+                        hole_char = "H" if piece.hole == Hole.WITH else "N"
+                    else:
+                        # LITTLE pieces: all lowercase
+                        size_char = "l"
+                        color_char = (
+                            "k" if piece.coloration == Coloration.BLACK else "w"
+                        )
+                        shape_char = "r" if piece.shape == Shape.CIRCLE else "q"
+                        hole_char = "h" if piece.hole == Hole.WITH else "n"
+
+                    text = f"{size_char}"
+                    # text = f"{size_char}{color_char}{shape_char}{hole_char}"
+
+                    # Determine if underlined (has hole)
+                    if piece.hole == Hole.WITH:
+                        # Underlined text
+                        text_obj = ax.text(
+                            c,
+                            r,
+                            text,
+                            fontsize=16,
+                            fontweight="bold",
+                            ha="center",
+                            va="center",
+                            color=color,
+                            bbox=dict(
+                                boxstyle="round,pad=0.0",
+                                edgecolor="none",
+                                facecolor="none",
+                            ),
+                            style="normal",
+                            family="monospace",
+                        )
+                        # Add underline manually
+                        ax.plot(
+                            [c - 0.12, c + 0.12],
+                            [r + 0.2, r + 0.2],
+                            color=color,
+                            linewidth=1.5,
+                        )
+                    else:
+                        # Normal text
+                        text_obj = ax.text(
+                            c,
+                            r,
+                            text,
+                            fontsize=16,
+                            fontweight="bold",
+                            ha="center",
+                            va="center",
+                            color=color,
+                            family="monospace",
+                        )
+
+                    # Add circle or square around the text
+                    if piece.shape == Shape.CIRCLE:
+                        # Draw circle
+                        circle = mpatches.Circle(
+                            (c, r), 0.3, fill=False, edgecolor=color, linewidth=1.5
+                        )
+                        ax.add_patch(circle)
+                    else:  # SQUARE
+                        # Draw square
+                        square = mpatches.Rectangle(
+                            (c - 0.25, r - 0.25),
+                            0.5,
+                            0.5,
+                            fill=False,
+                            edgecolor=color,
+                            linewidth=1.5,
+                        )
+                        ax.add_patch(square)
+
+        # Set equal aspect ratio
+        ax.set_aspect("equal")
+
+        # Only apply tight_layout and show if we created the figure
+        if created_fig:
+            plt.tight_layout()
+            if show:
+                plt.show()
+
+        return ax
