@@ -4,6 +4,9 @@ from .piece import Coloration, Shape, Size, Hole
 import numpy as np
 from colorama import Fore, Style, Back
 
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+
 
 class Board:
     def __init__(self, name: str, storage: bool, rows, cols):
@@ -459,9 +462,6 @@ class Board:
         ax : matplotlib.axes.Axes
             El eje con el tablero dibujado
         """
-        import matplotlib.pyplot as plt
-        import matplotlib.patches as mpatches
-
         # Create figure and axis if not provided
         if ax is None:
             fig, ax = plt.subplots(figsize=(6, 6))
@@ -504,7 +504,7 @@ class Board:
 
                     if piece.size == Size.TALL:
                         # TALL pieces: all uppercase
-                        size_char = "T"
+                        size_char = "o"
                         color_char = (
                             "K" if piece.coloration == Coloration.BLACK else "W"
                         )
@@ -512,7 +512,7 @@ class Board:
                         hole_char = "H" if piece.hole == Hole.WITH else "N"
                     else:
                         # LITTLE pieces: all lowercase
-                        size_char = "l"
+                        size_char = "x"
                         color_char = (
                             "k" if piece.coloration == Coloration.BLACK else "w"
                         )
@@ -542,13 +542,6 @@ class Board:
                             style="normal",
                             family="monospace",
                         )
-                        # Add underline manually
-                        ax.plot(
-                            [c - 0.12, c + 0.12],
-                            [r + 0.2, r + 0.2],
-                            color=color,
-                            linewidth=1.5,
-                        )
                     else:
                         # Normal text
                         text_obj = ax.text(
@@ -564,10 +557,16 @@ class Board:
                         )
 
                     # Add circle or square around the text
+                    fill_color = "lightgray" if piece.hole == Hole.WITH else "none"
                     if piece.shape == Shape.CIRCLE:
                         # Draw circle
                         circle = mpatches.Circle(
-                            (c, r), 0.3, fill=False, edgecolor=color, linewidth=1.5
+                            (c, r),
+                            0.3,
+                            fill=True,
+                            facecolor=fill_color,
+                            edgecolor=color,
+                            linewidth=1.5,
                         )
                         ax.add_patch(circle)
                     else:  # SQUARE
@@ -576,7 +575,8 @@ class Board:
                             (c - 0.25, r - 0.25),
                             0.5,
                             0.5,
-                            fill=False,
+                            fill=True,
+                            facecolor=fill_color,
                             edgecolor=color,
                             linewidth=1.5,
                         )
