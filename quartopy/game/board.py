@@ -464,13 +464,13 @@ class Board:
         """
         # Create figure and axis if not provided
         if ax is None:
-            fig, ax = plt.subplots(figsize=(6, 6))
+            _, ax = plt.subplots(figsize=(6, 6))
             created_fig = True
         else:
             created_fig = False
 
         # Set title
-        ax.set_title(title, fontweight="bold")
+        ax.set_title(title)  # , fontweight="bold"
 
         # Set axis limits and labels
         ax.set_xlim(-0.5, self.cols - 0.5)
@@ -496,36 +496,19 @@ class Board:
                         else "dodgerblue"
                     )
 
-                    # Build text representation with proper case
-                    # T=TALL (all uppercase), L=LITTLE (all lowercase)
-                    # K=BLACK, W=WHITE
-                    # R=CIRCLE (circle), Q=SQUARE (square)
-                    # H=WITH_HOLE (underline), N=WITHOUT (no underline)
-
                     if piece.size == Size.TALL:
-                        # TALL pieces: all uppercase
+                        # TALL pieces
                         size_char = "o"
-                        color_char = (
-                            "K" if piece.coloration == Coloration.BLACK else "W"
-                        )
-                        shape_char = "R" if piece.shape == Shape.CIRCLE else "Q"
-                        hole_char = "H" if piece.hole == Hole.WITH else "N"
                     else:
-                        # LITTLE pieces: all lowercase
+                        # LITTLE pieces
                         size_char = "x"
-                        color_char = (
-                            "k" if piece.coloration == Coloration.BLACK else "w"
-                        )
-                        shape_char = "r" if piece.shape == Shape.CIRCLE else "q"
-                        hole_char = "h" if piece.hole == Hole.WITH else "n"
 
                     text = f"{size_char}"
-                    # text = f"{size_char}{color_char}{shape_char}{hole_char}"
 
                     # Determine if underlined (has hole)
                     if piece.hole == Hole.WITH:
                         # Underlined text
-                        text_obj = ax.text(
+                        ax.text(
                             c,
                             r,
                             text,
@@ -544,7 +527,7 @@ class Board:
                         )
                     else:
                         # Normal text
-                        text_obj = ax.text(
+                        ax.text(
                             c,
                             r,
                             text,
