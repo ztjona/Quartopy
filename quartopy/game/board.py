@@ -7,6 +7,8 @@ from colorama import Fore, Style, Back
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 
+plt.ion()  # Enable interactive mode
+
 
 class Board:
     def __init__(self, name: str, storage: bool, rows, cols):
@@ -464,8 +466,17 @@ class Board:
         """
         # Create figure and axis if not provided
         if ax is None:
-            _, ax = plt.subplots(figsize=(6, 6))
-            created_fig = True
+            # Try to get current axis, create new one if none exists
+            try:
+                ax = plt.gca()
+                if not ax.has_data():
+                    # If axis is empty, configure it
+                    created_fig = True
+                else:
+                    created_fig = False
+            except:
+                _, ax = plt.subplots(figsize=(6, 6))
+                created_fig = True
         else:
             created_fig = False
 

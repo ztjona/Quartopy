@@ -119,6 +119,7 @@ def play_games(
             game.play_turn()
             if verbose:
                 game.display_boards()
+                game.game_board.plot()
 
             if delay > 0:
                 time.sleep(delay)
