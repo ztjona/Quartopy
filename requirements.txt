@@ -1,4 +1,4 @@
-click==8.3.0
+click==8.3.1
 colorama==0.4.6
 numpy==2.3.3
 PyQt5==5.15.10

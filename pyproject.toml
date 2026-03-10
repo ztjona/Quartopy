@@ -1,18 +1,52 @@
 [project]
 name = "quartopy"
-version = "1.1.2"
-description = "Juego Quarto con CLI y bots"
+version = "1.3.2"
+description = "Quarto board game implementation with CLI and customizable bots"
 authors = [
     { name="Jonathan Zea" },
     { name="David Guachamin" }
 ]
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = [
-    "click",
-    "colorama",
-    "numpy"
+license = { text = "MIT" }
+keywords = ["quarto", "board-game", "game", "ai", "bot"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Topic :: Games/Entertainment :: Board Games",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
 ]
+dependencies = [
+    "click>=8.0.0",
+    "colorama>=0.4.6",
+    "numpy>=2.0.0",
+    "tqdm>=4.60.0"
+]
+
+[project.optional-dependencies]
+viz = [
+    "matplotlib>=3.5.0"
+]
+dev = [
+    "pytest>=7.0.0",
+    "black>=22.0.0",
+    "mypy>=0.990"
+]
+
+[project.urls]
+Homepage = "https://github.com/ztjona/Quartopy"
+Repository = "https://github.com/ztjona/Quartopy"
+Issues = "https://github.com/ztjona/Quartopy/issues"
+
+[project.scripts]
+quarto = "quarto_CLI:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
