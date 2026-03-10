@@ -1385,7 +1385,7 @@ QDialogButtonBox {
 
         proxy_info = QGraphicsProxyWidget()
         proxy_info.setWidget(player_info_label)
-        proxy_info.setPos(10, 10)
+        proxy_info.setPos(10, 600)
         self.scene.addItem(proxy_info)
 
     def handle_media_player_error(self, error):

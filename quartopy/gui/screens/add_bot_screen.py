@@ -305,11 +305,11 @@ class AddBotScreen(QDialog):
             
             bot_config = {
                 'bot_name': bot_name,
-                'bot_class': bot_class,
-                'model_class': model_class,
-                'model_path': model_file_path,  # Usar la ruta original
-                'weights_path': weights_file_path,
-                'model_module': module_model  # Guardar el módulo también
+                'bot_class_module': bot_class.__module__, # Guardar el módulo de la clase bot
+                'bot_class_name': bot_class.__name__,     # Guardar el nombre de la clase bot
+                'model_class_name': model_class.__name__, # Guardar el nombre de la clase del modelo
+                'model_file_path': model_file_path,       # Ruta al archivo .py del modelo (original)
+                'weights_file_path': weights_file_path,   # Ruta al archivo .pt de los pesos
             }
             
             return True, f"Configuración de CNN Bot con modelo '{model_name}' y pesos '{weights_name}' parece ser válida.", bot_config

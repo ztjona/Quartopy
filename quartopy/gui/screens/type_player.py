@@ -1,46 +1,16 @@
-# quartopy/gui/screens/type_player.py
-
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFileDialog, QMessageBox,
-    QPushButton, QComboBox, QGroupBox, QGridLayout, QCheckBox, QInputDialog, QLineEdit, QApplication # Añadido QApplication
+    QPushButton, QComboBox, QGroupBox, QGridLayout, QCheckBox, QInputDialog, QLineEdit, QApplication
 )
-from PyQt5.QtGui import QFont, QIcon, QPainter, QColor, QBrush, QRadialGradient # Añadido QPainter, QColor, QBrush, QRadialGradient
-from PyQt5.QtCore import Qt, pyqtSignal, QSize, QTimer, QPointF # Añadido QTimer, QPointF
+from PyQt5.QtGui import QFont, QIcon, QPainter, QColor
+from PyQt5.QtCore import Qt, pyqtSignal, QSize
 import sys, os
-import random # Necesario para la clase Particle
 from .add_bot_screen import AddBotScreen
+import json
+import importlib.util
+from quartopy.bot.CNN_bot import CNNBot
 
-# --- CLASE PARA PARTÍCULAS TIPO "ESTELA" ---
-class Particle:
-    def __init__(self, max_width, max_height):
-        self.max_w = max_width
-        self.max_h = max_height
-        
-        # Nacimiento: Esquina superior derecha
-        offset = random.uniform(-100, 100)
-        self.position = QPointF(max_width + 50, -50 + offset)
-        
-        # Velocidad diagonal arrastrada
-        self.vx = random.uniform(-4.0, -7.0)
-        self.vy = random.uniform(3.0, 5.0)
-        
-        self.size = random.uniform(5, 15)
-        self.color = QColor(255, 215, 0, random.randint(100, 200)) # Dorado
-        self.lifespan = 300
-        self.age = 0
-
-    def update(self):
-        self.position.setX(self.position.x() + self.vx)
-        self.position.setY(self.position.y() + self.vy)
-        self.age += 1
-        
-        if self.age > 200:
-            alpha = self.color.alpha()
-            if alpha > 2: self.color.setAlpha(alpha - 2)
-
-    def is_dead(self):
-        return self.age >= self.lifespan or self.position.x() < -100 or self.position.y() > self.max_h + 100
-
+BOT_CONFIG_FILE = os.path.join('data', 'bots.json')
 
 class TypePlayerScreen(QWidget):
     """Pantalla para seleccionar el tipo de jugadores"""
@@ -60,13 +30,11 @@ class TypePlayerScreen(QWidget):
         p = self.palette()
         p.setColor(self.backgroundRole(), self.background_color)
         self.setPalette(p)
-
-        # --- SISTEMA DE PARTÍCULAS ---
-        self.particles = []
-        self.particle_timer = QTimer(self)
-        self.particle_timer.timeout.connect(self.update_particles)
-        # No iniciar el timer aquí, se iniciará en showEvent
         
+        self.last_player1_selection = "" # Nueva línea para inicializar
+        self.last_player2_selection = "" # Nueva línea para inicializar
+
+        self._load_bot_configs() # Cargar configuraciones de bots al iniciar
         self.setup_ui()
         
     def setup_ui(self):
@@ -153,7 +121,7 @@ class TypePlayerScreen(QWidget):
                 border: 1px solid #5;
                 border-radius: 5px;
                 padding: 8px;
-                min-width: 20px;
+                min-width: 20px; /* Ancho fijo para el QComboBox */
             }
             QComboBox:hover {
                 border: 1px solid #FFD700;
@@ -333,48 +301,140 @@ class TypePlayerScreen(QWidget):
         # Configuración inicial
         self.update_ui()
     
-    def update_particles(self):
-        if len(self.particles) < 60:
-            self.particles.append(Particle(self.width(), self.height()))
-
-        for particle in list(self.particles):
-            particle.update()
-            if particle.is_dead():
-                self.particles.remove(particle)
-        self.update() # Llama al paintEvent
-
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         
         # 1. Dibujar el fondo azul sólido
         painter.fillRect(self.rect(), self.background_color)
-
-        # 2. Dibujar las partículas doradas
-        for p in self.particles:
-            gradient = QRadialGradient(p.position, p.size)
-            gradient.setColorAt(0, p.color)
-            gradient.setColorAt(1, QColor(255, 215, 0, 0)) # Desvanecimiento
-            
-            painter.setBrush(QBrush(gradient))
-            painter.setPen(Qt.NoPen)
-            painter.drawEllipse(p.position, p.size, p.size)
         
         super().paintEvent(event)
 
     def showEvent(self, event):
-        """Se llama cuando el widget se muestra."""
+        """Se ejecuta cuando se muestra la pantalla"""
         super().showEvent(event)
-        if not self.particle_timer.isActive():
-            self.particle_timer.start(20)
+        self._load_bot_configs() # Cargar configuraciones de bots al mostrar
+        self._update_comboboxes_with_loaded_bots() # Actualizar los comboboxes con los bots cargados
         self.update() # Asegurar un redibujado al mostrarse
+
 
     def hideEvent(self, event):
         """Se llama cuando el widget se oculta."""
         super().hideEvent(event)
-        if self.particle_timer.isActive():
-            self.particle_timer.stop()
 
+
+    def _save_bot_configs(self):
+        """Guarda las configuraciones de los bots personalizados y las selecciones de los jugadores a un archivo JSON."""
+        print("DEBUG: Intentando guardar configuraciones de bots en", BOT_CONFIG_FILE) # Añadir esta línea
+        try:
+            serializable_bots = []
+            for bot_config in self._loaded_bots.values():
+                serializable_bots.append({
+                    'bot_name': bot_config['bot_name'],
+                    'bot_class_module': bot_config['bot_class'].__module__,
+                    'bot_class_name': bot_config['bot_class'].__name__,
+                    'model_class_name': bot_config['model_class'].__name__,
+                    'model_file_path': bot_config['model_file_path'],
+                    'weights_file_path': bot_config['weights_file_path'],
+                })
+
+            data_to_save = {
+                'bots': serializable_bots,
+                'player1_selection': self.player1_combo.currentText(),
+                'player2_selection': self.player2_combo.currentText()
+            }
+            with open(BOT_CONFIG_FILE, 'w', encoding='utf-8') as f:
+                json.dump(data_to_save, f, ensure_ascii=False, indent=4)
+        except Exception as e:
+            import traceback
+            print(f"ERROR: Fallo al guardar configuraciones de bots: {e}") # Nueva línea
+            traceback.print_exc() # Imprimir la traza completa de la excepción
+            QMessageBox.warning(self, "Error al guardar bots y selecciones", f"No se pudieron guardar las configuraciones: {e}")
+
+    def _load_bot_configs(self):
+        """Carga las configuraciones de los bots personalizados y las últimas selecciones de los jugadores desde un archivo JSON."""
+        self._loaded_bots = {}  # Limpiar bots existentes antes de cargar
+        self.last_player1_selection = ""
+        self.last_player2_selection = ""
+
+        if os.path.exists(BOT_CONFIG_FILE):
+            try:
+                with open(BOT_CONFIG_FILE, 'r', encoding='utf-8') as f:
+                    data = json.loads(f.read())
+                
+                bots_list_serializable = data.get('bots', [])
+                for bot_config_serializable in bots_list_serializable:
+                    bot_name = bot_config_serializable['bot_name']
+                    bot_class_module_str = bot_config_serializable['bot_class_module']
+                    bot_class_name_str = bot_config_serializable['bot_class_name']
+                    model_class_name_str = bot_config_serializable['model_class_name']
+                    model_file_path = bot_config_serializable['model_file_path']
+                    weights_file_path = bot_config_serializable['weights_file_path']
+
+                    # Dinámicamente importar la clase del bot
+                    bot_module = importlib.import_module(bot_class_module_str)
+                    bot_class = getattr(bot_module, bot_class_name_str)
+
+                    # Dinámicamente importar la clase del modelo
+                    # Añadir la raíz del proyecto a sys.path si no está ya
+                    quartopy_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+                    if quartopy_root not in sys.path:
+                        sys.path.insert(0, quartopy_root)
+                    
+                    model_module_name = f"custom_model_loaded_{hash(model_file_path)}"
+                    spec = importlib.util.spec_from_file_location(model_module_name, model_file_path)
+                    if spec is None:
+                        raise ImportError(f"No se pudo crear especificación para el módulo desde {model_file_path}")
+                    module_model = importlib.util.module_from_spec(spec)
+                    sys.modules[model_module_name] = module_model
+                    spec.loader.exec_module(module_model)
+                    model_class = getattr(module_model, model_class_name_str)
+
+                    # Reconstruir el bot_config con las referencias de clase reales
+                    bot_config_reconstructed = {
+                        'bot_name': bot_name,
+                        'bot_class': bot_class,
+                        'model_class': model_class,
+                        'model_file_path': model_file_path,
+                        'weights_file_path': weights_file_path,
+                    }
+                    self._loaded_bots[bot_name] = bot_config_reconstructed
+                
+                self.last_player1_selection = data.get('player1_selection', "")
+                self.last_player2_selection = data.get('player2_selection', "")
+
+            except json.JSONDecodeError as e:
+                QMessageBox.warning(self, "Error al cargar bots", f"Archivo de configuración de bots corrupto: {e}")
+            except Exception as e:
+                import traceback
+                error_details = traceback.format_exc()
+                QMessageBox.warning(self, "Error al cargar bots", f"No se pudieron cargar las configuraciones de bots: {e}\nDetalles: {error_details}")
+
+    def _update_comboboxes_with_loaded_bots(self):
+        """Actualiza los QComboBoxes con los bots cargados (por defecto + personalizados)."""
+        # Limpiar y añadir los elementos base (siempre presentes)
+        self.player1_combo.clear()
+        self.player2_combo.clear()
+        default_items = ["Humano", "Bot Aleatorio", "Bot Minimax", "Bot CNN"]
+        self.player1_combo.addItems(default_items)
+        self.player2_combo.addItems(default_items)
+
+        # Añadir bots personalizados
+        for bot_name in self._loaded_bots.keys():
+            if bot_name not in default_items: # Evitar duplicados si por error se guarda un bot con nombre de default
+                self.player1_combo.addItem(bot_name)
+                self.player2_combo.addItem(bot_name)
+        
+        # Intentar restaurar las selecciones guardadas
+        if self.last_player1_selection and self.player1_combo.findText(self.last_player1_selection) != -1:
+            self.player1_combo.setCurrentText(self.last_player1_selection)
+        else:
+            self.player1_combo.setCurrentIndex(0) # Humano como default
+
+        if self.last_player2_selection and self.player2_combo.findText(self.last_player2_selection) != -1:
+            self.player2_combo.setCurrentText(self.last_player2_selection)
+        else:
+            self.player2_combo.setCurrentIndex(1) # Bot Aleatorio como default
 
     def update_ui(self):
         """Actualiza la interfaz según las selecciones"""
@@ -391,7 +451,7 @@ class TypePlayerScreen(QWidget):
                 return style.replace("border: 1px solid #555;", "border: 2px solid #F44336;") # Red for Minimax
             elif p_type == "Bot CNN":
                 return style.replace("border: 1px solid #555;", "border: 2px solid #FF9800;")
-            else: # Random Bot
+            else: # Random Bot or Custom Bot
                 return style.replace("border: 1px solid #555;", "border: 2px solid #2196F3;")
 
         self.player1_combo.setStyleSheet(get_style_for_type(player1_type, base_style))
@@ -408,9 +468,10 @@ class TypePlayerScreen(QWidget):
                 return {
                     'type': 'custom_bot',
                     'display_name': bot_info['bot_name'],
-                    'bot_class': bot_info['bot_class'],        # CNNBot
-                    'model_class': bot_info['model_class'],    # QuartoCNN
-                    'weights_path': bot_info['weights_path']    # Ruta al .pt de los pesos
+                    'bot_class': bot_info['bot_class'],        # Clase del bot (ya reconstruida)
+                    'model_class': bot_info['model_class'],    # Clase del modelo (ya reconstruida)
+                    'model_file_path': bot_info['model_file_path'], # Ruta al archivo .py del modelo
+                    'weights_file_path': bot_info['weights_file_path']    # Ruta al .pt de los pesos
                 }
             elif combo_text == "Bot Minimax":
                 return {'type': 'minimax_bot', 'display_name': 'Bot Minimax'}
@@ -449,30 +510,68 @@ class TypePlayerScreen(QWidget):
         add_bot_dialog.bot_added_successfully.connect(self._add_loaded_bot_to_combos)
         add_bot_dialog.exec_()
     
-    def _add_loaded_bot_to_combos(self, bot_config: dict):
-        """Añade un bot cargado dinámicamente a los QComboBoxes de selección."""
-        bot_name = bot_config['bot_name']
-        self._loaded_bots[bot_name] = bot_config
-        self.player1_combo.addItem(bot_name)
-        self.player2_combo.addItem(bot_name)
+    def _add_loaded_bot_to_combos(self, bot_config_serializable: dict): # Renombrar para claridad
+        """Añade un bot cargado dinámicamente a los QComboBoxes de selección, reconstruyendo las clases."""
+        
+        bot_name = bot_config_serializable['bot_name']
+        bot_class_module_str = bot_config_serializable['bot_class_module']
+        bot_class_name_str = bot_config_serializable['bot_class_name']
+        model_class_name_str = bot_config_serializable['model_class_name']
+        model_file_path = bot_config_serializable['model_file_path']
+        weights_file_path = bot_config_serializable['weights_file_path']
+
+        try:
+            # Dinámicamente importar la clase del bot
+            bot_module = importlib.import_module(bot_class_module_str)
+            bot_class = getattr(bot_module, bot_class_name_str)
+
+            # Dinámicamente importar la clase del modelo
+            quartopy_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+            if quartopy_root not in sys.path:
+                sys.path.insert(0, quartopy_root)
+            
+            model_module_name = f"custom_model_added_{hash(model_file_path)}" # Nombre único para el módulo
+            spec = importlib.util.spec_from_file_location(model_module_name, model_file_path)
+            if spec is None:
+                raise ImportError(f"No se pudo crear especificación para el módulo desde {model_file_path}")
+            module_model = importlib.util.module_from_spec(spec)
+            sys.modules[model_module_name] = module_model
+            spec.loader.exec_module(module_model)
+            model_class = getattr(module_model, model_class_name_str)
+
+            # Reconstruir el bot_config con las referencias de clase reales
+            bot_config_reconstructed = {
+                'bot_name': bot_name,
+                'bot_class': bot_class,
+                'model_class': model_class,
+                'model_file_path': model_file_path,
+                'weights_file_path': weights_file_path,
+            }
+            self._loaded_bots[bot_name] = bot_config_reconstructed
+            self._update_comboboxes_with_loaded_bots() # Actualizar los comboboxes
+            self._save_bot_configs() # Guardar después de añadir
+        except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            QMessageBox.critical(self, "Error al añadir bot", f"No se pudo añadir el bot dinámicamente: {e}\nDetalles: {error_details}")
 
     def showEvent(self, event):
         """Se ejecuta cuando se muestra la pantalla"""
         super().showEvent(event)
-        # Limpiar bots cargados y resetear QComboBoxes
-        self._loaded_bots = {}
-        self.player1_combo.clear()
-        self.player2_combo.clear()
-        self.player1_combo.addItems(["Humano", "Bot Aleatorio", "Bot Minimax", "Bot CNN"])
-        self.player2_combo.addItems(["Humano", "Bot Aleatorio", "Bot Minimax", "Bot CNN"])
-
-        # Restablecer selecciones por defecto
-        self.player1_combo.setCurrentIndex(0)  # Humano
-        self.player2_combo.setCurrentIndex(1)  # Bot Aleatorio
+        self._load_bot_configs()
+        self._update_comboboxes_with_loaded_bots() # Asegura que los comboboxes estén actualizados con bots cargados
+        
+        # Restablecer selecciones por defecto si no hay una selección válida
+        if self.player1_combo.currentText() == "":
+            self.player1_combo.setCurrentIndex(0)  # Humano
+        if self.player2_combo.currentText() == "":
+            self.player2_combo.setCurrentIndex(1)  # Bot Aleatorio
+            
         self.player1_name_edit.setText("Jugador 1")
         self.player1_name_edit.setReadOnly(True)
         self.player2_name_edit.setText("Jugador 2")
         self.player2_name_edit.setReadOnly(True)
+        self.update() # Asegurar un redibujado al mostrarse
 
 
 # Función de ejemplo para integrar esta pantalla
@@ -485,13 +584,9 @@ def test_type_player_screen():
     def on_players_selected(config):
         if config:
             print(f"Configuración seleccionada:")
-            print(f"  Jugador 1 {config['player1']} ({config['player1_display']})")
-            print(f"  Jugador 2 {config['player2']} ({config['player2_display']})")
-            
-            # Aquí podrías iniciar el juego con esta configuración
-            # Por ejemplo:
-            # from quartopy import go_quarto
-            # go_quarto(player1_file=config['player1'], player2_file=config['player2'])
+            print(f"  Jugador 1 {config['player1_config']['display_name']} ({config['player1_name']})")
+            print(f"  Jugador 2 {config['player2_config']['display_name']} ({config['player2_name']})")
+            print(f"  Modo 2x2: {config['mode_2x2']}")
         else:
             print("Configuración cancelada - volviendo al menú")
         

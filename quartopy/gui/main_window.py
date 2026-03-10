@@ -5,7 +5,8 @@ from quartopy.gui.screens.menu_screen import MenuScreen
 from quartopy.gui.screens.game_board import GameBoard
 from quartopy.gui.screens.type_player import TypePlayerScreen
 from quartopy.gui.screens.record_screen import RecordScreen
-from quartopy.gui.screens.rules_screen import RulesScreen # Importar RulesScreen
+from quartopy.gui.screens.rules_screen import RulesScreen
+from quartopy.gui.particle_system import ParticleSystem # Importar ParticleSystem
 
 class MainWindow(QMainWindow):
     """
@@ -22,9 +23,12 @@ class MainWindow(QMainWindow):
         self.stacked_widget = QStackedWidget()
         self.setCentralWidget(self.stacked_widget)
         
-        # Inicializa las pantallas, pasando 'self' como parent
-        self.start_screen = StartScreen(parent=self)
-        self.menu_screen = MenuScreen(parent=self)
+        # Inicializa el sistema de partículas compartido, usando self (MainWindow) como parent
+        self.particle_system = ParticleSystem(parent_widget=self)
+
+        # Inicializa las pantallas, pasando 'self' como parent y el sistema de partículas
+        self.start_screen = StartScreen(parent=self, particle_system=self.particle_system)
+        self.menu_screen = MenuScreen(parent=self, particle_system=self.particle_system)
         self.game_board = None # Se creará dinámicamente
         self.type_player = TypePlayerScreen(parent=self)
         self.record_screen = RecordScreen(parent=self)
@@ -50,7 +54,6 @@ class MainWindow(QMainWindow):
 
         # Conexiones de otras pantallas
         self.record_screen.back_to_menu.connect(self.show_menu)
-        # self.type_player.back_btn.clicked.connect(self.closeMini1) # Esto debería ser show_menu
         self.type_player.back_btn.clicked.connect(self.show_menu) # Volver al menú
         self.type_player.players_selected.connect(self.start_game_with_config)
         self.rules_screen.back_to_menu_signal.connect(self.show_menu) # Conexión de RulesScreen para volver al menú
