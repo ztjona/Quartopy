@@ -1,5 +1,5 @@
 .vscode/
-partidas_guardadas/
+# partidas_guardadas/
 tests/
 # Byte-compiled / optimized / DLL files
 __pycache__/

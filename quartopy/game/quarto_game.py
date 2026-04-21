@@ -129,6 +129,17 @@ class QuartoGame:
 
             # self.selected_piece = 0
 
+    def select_and_remove_piece(self, piece: Piece):
+        """Finds a piece on the storage board, removes it, and sets it as the selected piece."""
+        if coord := self.storage_board.find_piece(piece):
+            r, c = coord
+            self.storage_board.remove_piece(r, c)
+            self.selected_piece = piece
+            return True
+        else:
+            logger.error(f"Attempted to select piece {piece} not found in storage.")
+            return False
+
     def cambiar_turno(self):
         """Cambia el turno y la fase del juego"""
         # Cambiar turno
@@ -136,8 +147,9 @@ class QuartoGame:
             self.turn = not self.turn
         self.pick = not self.pick
 
+
     def export_history_to_csv(
-        self, output_folder: str = "./partidas_guardadas/", match_number: int = 1
+        self, output_folder: str = "./partidas_guardadas/", match_number: int = 1, winner: str = "Tie"
     ):
         """Exporta el historial a un CSV con nombre que incluye match, fecha y hora"""
         # Crear directorio si no existe
@@ -186,6 +198,9 @@ class QuartoGame:
                         board,
                     ]
                 )
+            
+            writer.writerow([])
+            writer.writerow(["Ganador", winner])
 
         return filepath
 
@@ -238,4 +253,5 @@ class QuartoGame:
             "Player 1": self.player1.name,
             "Player 2": self.player2.name,
             "result": self.winner_pos,
+            "winner": self.match_result,
         }

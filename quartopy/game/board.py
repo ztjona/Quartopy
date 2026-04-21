@@ -80,7 +80,7 @@ class Board:
         else:
             raise ValueError("Solo se pueden colocar objetos Piece o 0 (vacío)")
 
-    def check_win(self, mode_2x2: bool = False) -> bool:
+    def check_win(self, mode_2x2: bool = False) -> tuple[bool, list[tuple[int, int]] | None]:
         """Returns True if there is a winning condition on the board.
         False otherwise.
         A winning condition is met when there is a row, column, or diagonal
@@ -92,24 +92,25 @@ class Board:
         * mode_2x2 (bool): If True, checks for 2x2 square winning condition.
             Default is False.
         """
-        assert self.last_move is not None, "last_position should not be None here"
+        if self.last_move is None:
+            return False, None # No hay último movimiento, no puede haber victoria
 
         row, col = self.last_move
 
         # Check the row of the last placed piece
         if self.__is_winning_line(self.board[row]):
-            return True
+            return True, [(row, c) for c in range(self.cols)]
 
         # Check the column of the last placed piece
         column_pieces = [self.board[r][col] for r in range(self.rows)]
         if self.__is_winning_line(column_pieces):
-            return True
+            return True, [(r, col) for r in range(self.rows)]
 
         # Check main diagonal if the piece is on it
         if row == col:
             main_diagonal_pieces = [self.board[i][i] for i in range(self.rows)]
             if self.__is_winning_line(main_diagonal_pieces):
-                return True
+                return True, [(i, i) for i in range(self.rows)]
 
         # Check anti-diagonal if the piece is on it
         if row + col == self.cols - 1:
@@ -117,7 +118,7 @@ class Board:
                 self.board[i][self.cols - 1 - i] for i in range(self.rows)
             ]
             if self.__is_winning_line(anti_diagonal_pieces):
-                return True
+                return True, [(i, self.cols - 1 - i) for i in range(self.rows)]
 
         # Check squares
         if mode_2x2:
@@ -143,8 +144,9 @@ class Board:
                         self.board[r][c],
                     ]
                     if self.__is_winning_line(square_pieces):
-                        return True
-        return False
+                        coords = [(r - 1, c - 1), (r - 1, c), (r, c - 1), (r, c)]
+                        return True, coords
+        return False, None
 
     def is_full(self):
         for row in range(self.rows):

@@ -1,6 +1,6 @@
 from ..utils import logger
 from ..models import load_bot_class
-from ..game.quarto_game import QuartoGame
+from .quarto_game import QuartoGame
 from ..models import BotAI
 
 import time
@@ -55,10 +55,19 @@ def go_quarto(
         logger.info(
             f"Usando bots desde scripts: {player1_file} y {player2_file} en la carpeta {folder_bots}"
         )
-    # Cargar clases de los bots
+    
+    # --- Player 1
     player1_class = load_bot_class(path.join(folder_bots, f"{player1_file}.py"))
-    player2_class = load_bot_class(path.join(folder_bots, f"{player2_file}.py"))
+    # Add model path if CNN bot
+    if player1_file == "CNN_bot":
+        params_p1['model_path'] = "quartopy/CHECKPOINTS/LOSS_APPROACHs_1212-2_only_select/20251212_2206-LOSS_APPROACHs_1212-2_only_select_E_1034.pt"
     player1 = player1_class(**params_p1)
+
+    # --- Player 2
+    player2_class = load_bot_class(path.join(folder_bots, f"{player2_file}.py"))
+    # Add model path if CNN bot
+    if player2_file == "CNN_bot":
+        params_p2['model_path'] = "quartopy/CHECKPOINTS/LOSS_APPROACHs_1212-2_only_select/20251212_2206-LOSS_APPROACHs_1212-2_only_select_E_1034.pt"
     player2 = player2_class(**params_p2)
 
     results = play_games(
@@ -119,7 +128,6 @@ def play_games(
             game.play_turn()
             if verbose:
                 game.display_boards()
-                game.game_board.plot()
 
             if delay > 0:
                 time.sleep(delay)

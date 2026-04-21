@@ -1,0 +1,14 @@
+{
+    "bots": [
+        {
+            "bot_name": "CNN_Bot_CNN_uncoupled_Marco (2)_20260202_1246-C_temp_line_E_0001 (4)",
+            "bot_class_module": "quartopy.bot.CNN_bot",
+            "bot_class_name": "CNNBot",
+            "model_class_name": "QuartoCNN",
+            "model_file_path": "c:\\Users\\CORE I5\\OneDrive\\Escritorio\\QuartoPy\\Quartopy\\quartopy\\models\\CNN_uncoupled_Marco (2).py",
+            "weights_file_path": "c:\\Users\\CORE I5\\OneDrive\\Escritorio\\QuartoPy\\Quartopy\\quartopy\\CHECKPOINTS\\20260202_1246-C_temp_line_E_0001 (4).pt"
+        }
+    ],
+    "player1_selection": "Humano",
+    "player2_selection": "Bot Aleatorio"
+}

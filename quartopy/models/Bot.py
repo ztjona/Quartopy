@@ -5,11 +5,6 @@ from abc import ABC, abstractmethod
 
 
 class BotAI(ABC):
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        pass
-
     @abstractmethod
     def __init__(self, *args, **kwargs):
         pass

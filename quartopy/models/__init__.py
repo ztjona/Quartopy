@@ -4,10 +4,10 @@ from pathlib import Path
 from .Bot import BotAI
 
 
-def load_bot_class(
-    file_path: str | Path, class_name: str = "Quarto_bot"
-) -> type[BotAI]:
-    """Importa la clase llamada ``class_name`` (no una instancia) desde el archivo especificado por ``file_path``."""
+import inspect
+
+def load_bot_class(file_path: str | Path) -> type[BotAI]:
+    """Importa la primera clase que hereda de BotAI desde el archivo especificado."""
     file_path = Path(file_path)
     module_name = file_path.stem
 
@@ -20,9 +20,11 @@ def load_bot_class(
     sys.modules[module_name] = module
     spec.loader.exec_module(module)
 
-    if not hasattr(module, class_name):
-        raise AttributeError(
-            f"Módulo {module_name} debe contener una clase '{class_name}'"
-        )
+    # Buscar una clase que herede de BotAI
+    for name, obj in inspect.getmembers(module, inspect.isclass):
+        if issubclass(obj, BotAI) and obj is not BotAI:
+            return obj
 
-    return getattr(module, class_name)
+    raise AttributeError(
+        f"Módulo {module_name} no contiene una clase que herede de 'BotAI'"
+    )

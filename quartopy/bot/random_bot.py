@@ -14,12 +14,9 @@ from quartopy import logger, BotAI, Piece, QuartoGame
 from random import choice
 
 
-class Quarto_bot(BotAI):
-    @property
-    def name(self) -> str:
-        return "RandomBot"
-
-    def __init__(self, **kwargs):
+class  Quarto_bot(BotAI):
+    def __init__(self, name: str = "RandomBot", **kwargs):
+        self.name = name
         logger.debug(f"RandomBot initialized with name: {self.name}")
 
     def select(self, game: QuartoGame, ith_option: int = 0, *args, **kwargs) -> Piece:
